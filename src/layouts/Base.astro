@@ -1,0 +1,55 @@
+---
+import '../styles/global.css';
+import { meta } from '../content/copy';
+import { withBase } from '../lib/inline';
+import { themeColor } from '../lib/theme-color';
+
+interface Props {
+  title?: string;
+  description?: string;
+  /** Keeps a page out of search engines. */
+  noindex?: boolean;
+}
+
+const { title = meta.title, description = meta.description, noindex = false } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+---
+
+<!doctype html>
+<html lang="en-US" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {/* The extension's Marketplace icon, only resized (original: src/assets/icons/vscode-pgsql-extension-icon.png). */}
+    <link rel="icon" href={withBase('favicon-32.png')} type="image/png" sizes="32x32" />
+    <link rel="icon" href={withBase('favicon-192.png')} type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href={withBase('apple-touch-icon.png')} />
+    {/* Page-specific head tags, such as preloads */}
+    <slot name="head" />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    {/* Browser UI colour follows the page theme, not the OS: --color-bg from tokens.css. ThemeToggle keeps it in sync. */}
+    <meta name="theme-color" content={themeColor.dark} data-theme-color data-light={themeColor.light} data-dark={themeColor.dark} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    {/* Apply a saved theme before first paint, so there is no flash. */}
+    <script is:inline>
+      try {
+        const t = localStorage.getItem('theme');
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+        if (t === 'light') {
+          const m = document.querySelector('[data-theme-color]');
+          m.content = m.dataset.light;
+        }
+      } catch {}
+    </script>
+  </head>
+  <body id="top">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <slot />
+  </body>
+</html>

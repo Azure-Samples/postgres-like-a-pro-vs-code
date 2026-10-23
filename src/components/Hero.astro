@@ -1,0 +1,557 @@
+---
+import Button from './Button.astro';
+import Icon from './Icon.astro';
+import DemoVideo from './DemoVideo.astro';
+import Databases from './Databases.astro';
+import { a11y, hero } from '../content/copy';
+import { isResolved, twoTone } from '../lib/inline';
+
+// The eyebrow links to the series video once its URL is set; until then it's plain text.
+const videoReady = isResolved(hero.eyebrowHref);
+const gridCorners = [[0, 0], [48, 0], [0, 48], [48, 48]];
+---
+
+<section class="hero" aria-labelledby="hero-heading">
+  {/* Centred on the content axis (x 50%), off the window's top edge. Both patterns share x/y, so the lit dots stay registered. */}
+  <svg class="hero__grid" aria-hidden="true">
+    <defs>
+      <pattern id="hero-grid" x="50%" y="24" width="48" height="48" patternUnits="userSpaceOnUse">
+        <path d="M48 0H0V48" fill="none" stroke="var(--grid-line)" stroke-width="1"></path>{gridCorners.map(([cx, cy]) => <circle cx={cx} cy={cy} r="1.25" fill="var(--grid-dot)"></circle>)}
+      </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#hero-grid)"></rect>
+  </svg>
+  {/* Pointer spotlight: a masked window moves over the hero while the lit layer inside it moves
+       the opposite way, so the dots stay put and only transforms change (no repaints).
+       Idle drift: the .bg-motion pairs (CSS). Hover offset: the -h layers (script). */}
+  <div class="hero__lit" aria-hidden="true">
+    <div class="hero__spot bg-motion">
+      <div class="hero__spot-y bg-motion">
+        <div class="hero__spot-h" data-spot>
+          <div class="hero__counter bg-motion">
+            <div class="hero__counter-y bg-motion">
+              <div class="hero__counter-h" data-spot-counter>
+                <svg class="hero__lit-grid">
+                  <defs>
+                    <pattern id="hero-grid-lit" x="50%" y="24" width="48" height="48" patternUnits="userSpaceOnUse">
+                      <path d="M48 0H0V48" fill="none" stroke="var(--grid-lit-line)" stroke-width="1"></path>{gridCorners.map(([cx, cy]) => <circle cx={cx} cy={cy} r="1.25" fill="var(--grid-lit-dot)"></circle>)}
+                    </pattern>
+                  </defs>
+                  <rect width="100%" height="100%" fill="url(#hero-grid-lit)"></rect>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="container hero__inner">
+    {
+      videoReady ? (
+        <a class="hero__eyebrow hero__eyebrow--link rise" style="--i: 0" href={hero.eyebrowHref} target="_blank" rel="noopener" data-cta="video">
+          <span class="yt">
+            <Icon name="brand-youtube" size={18} />
+            <svg class="yt__red" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path class="yt__play" d="M8 7h9v10H8z" />
+              <path class="yt__frame" d="M18 3a5 5 0 0 1 5 5v8a5 5 0 0 1 -5 5h-12a5 5 0 0 1 -5 -5v-8a5 5 0 0 1 5 -5zm-9 6v6a1 1 0 0 0 1.514 .857l5 -3a1 1 0 0 0 0 -1.714l-5 -3a1 1 0 0 0 -1.514 .857z" />
+            </svg>
+          </span>
+          {hero.eyebrow}
+          <span class="visually-hidden">: {hero.eyebrowLink} {a11y.newTab}</span>
+        </a>
+      ) : (
+        <p class="hero__eyebrow rise" style="--i: 0"><Icon name="brand-youtube" size={18} />{hero.eyebrow}</p>
+      )
+    }
+    <h1 id="hero-heading" set:html={twoTone(hero.heading)} />
+    <p class="hero__body">{hero.body} <Databases /></p>
+    <div class="hero__ctas rise" style="--i: 1" id="hero-ctas">
+      <Button href={hero.primary.href} cta={hero.primary.id} icon="puzzle">{hero.primary.label}</Button>
+      <Button href={hero.secondary.href} variant="secondary" cta={hero.secondary.id}>{hero.secondary.label}</Button>
+    </div>
+    <DemoVideo />
+  </div>
+</section>
+
+<script>
+  // Pointer spotlight. Mouse only, off under reduced motion (re-checked if either
+  // setting changes). CSS runs the idle drift; on hover this eases an offset from the drift to the
+  // smoothed pointer (h: 0 to 1), written to the spot and inverted on its counter: transforms only.
+  const hero = document.querySelector<HTMLElement>('.hero');
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const finePointer = matchMedia('(hover: hover) and (pointer: fine)');
+  const spot = hero?.querySelector<HTMLElement>('.hero__spot');
+  const spotY = hero?.querySelector<HTMLElement>('.hero__spot-y');
+  const spotH = hero?.querySelector<HTMLElement>('[data-spot]');
+  const counterH = hero?.querySelector<HTMLElement>('[data-spot-counter]');
+  if (hero && spot && spotY && spotH && counterH) {
+    const TAU = 120; // ms: damped follow, light enough to feel attached, heavy enough to feel calm
+    // The token in ms, whichever unit the minifier wrote (it turns 500ms into .5s)
+    const time = (v: string) => (v.trim().endsWith('ms') ? parseFloat(v) : parseFloat(v) * 1000);
+    const enter = time(getComputedStyle(document.documentElement).getPropertyValue('--dur-enter')) || 500;
+    const ease = (t: number) => 0.5 - Math.cos(Math.PI * t) / 2; // the hand-off's sine in-out
+    // --ease-ambient, cubic-bezier(0.37, 0, 0.63, 1): computes the drift's position from its clock,
+    // since reading it from styles forces a second style pass every frame
+    const drift = (t: number) => {
+      let u = t;
+      for (let i = 0; i < 6; i++) {
+        const x = 3 * (1 - u) * (1 - u) * u * 0.37 + 3 * (1 - u) * u * u * 0.63 + u * u * u - t;
+        const d = 3 * (1 - u) * (1 - u) * 0.37 + 6 * (1 - u) * u * (0.63 - 0.37) + 3 * u * u * (1 - 0.63);
+        u = Math.min(1, Math.max(0, u - x / d));
+      }
+      return 3 * (1 - u) * u * u + u * u * u;
+    };
+    // Eased 0-1 progress of an `alternate` loop. Timing is read once: on a CSS animation,
+    // getTiming() forces a style pass too.
+    type Clock = { a: Animation; duration: number; delay: number };
+    const clock = (el: Element): Clock | undefined => {
+      const a = el.getAnimations()[0];
+      const t = a?.effect?.getTiming();
+      return a && t && typeof t.duration === 'number' ? { a, duration: t.duration, delay: t.delay ?? 0 } : undefined;
+    };
+    const progress = (k: Clock | undefined) => {
+      if (!k || k.a.currentTime === null) return 0.5;
+      const c = (((Number(k.a.currentTime) - k.delay) / k.duration) % 2 + 2) % 2;
+      return drift(c < 1 ? c : 2 - c);
+    };
+    let ax: Clock | undefined;
+    let ay: Clock | undefined;
+    let width = 0;
+    let rem = 16;
+    const measure = () => {
+      width = hero.clientWidth;
+      rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    };
+    measure();
+    addEventListener('resize', measure);
+    let enabled = finePointer.matches && !reduceMotion.matches;
+    let inside = false;
+    let offscreen = false;
+    let frame = 0;
+    let last = 0;
+    let h = 0;
+    let tx = 0;
+    let ty = 0;
+    let px = 0;
+    let py = 0;
+    const place = (x: number, y: number) => {
+      spotH.style.translate = `${x}px ${y}px`;
+      counterH.style.translate = `${-x}px ${-y}px`;
+    };
+    const step = (now: number) => {
+      const dt = last ? now - last : 16;
+      last = now;
+      const k = 1 - Math.exp(-dt / TAU);
+      px += (tx - px) * k;
+      py += (ty - py) * k;
+      h = inside ? Math.min(1, h + dt / enter) : Math.max(0, h - dt / (enter * 2)); // in 1x, out 2x
+      // Where the idle drift has the spot now (the spot-x and spot-y keyframes)
+      const amp = Math.min(0.2 * width, 200);
+      ax ??= clock(spot); // looked up once: getAnimations() itself forces a style pass
+      ay ??= clock(spotY);
+      const ix = width / 2 - amp + 2 * amp * progress(ax);
+      const iy = (15 + 13 * progress(ay)) * rem;
+      const e = ease(h);
+      place(e * (px - ix), e * (py - iy));
+      frame = !offscreen && (inside || h > 0) ? requestAnimationFrame(step) : 0;
+      if (!frame) last = 0;
+    };
+    const run = () => {
+      if (!frame) frame = requestAnimationFrame(step);
+    };
+    const leave = () => {
+      inside = false;
+      hero.classList.remove('is-lit');
+    };
+    // On the document, tested against the hero's box, so the transparent header over the hero
+    // counts as inside.
+    document.addEventListener(
+      'pointermove',
+      (e) => {
+        if (!enabled || e.pointerType !== 'mouse') return;
+        const box = hero.getBoundingClientRect();
+        const x = e.clientX - box.left;
+        const y = e.clientY - box.top;
+        if (x < 0 || y < 0 || x > box.width || y > box.height) return inside ? leave() : undefined;
+        tx = x;
+        ty = y;
+        if (!inside) {
+          inside = true;
+          if (h === 0) {
+            px = x; // snap: the h blend already glides the light in
+            py = y;
+          }
+          hero.classList.add('is-lit');
+        }
+        run();
+      },
+      { passive: true },
+    );
+    document.documentElement.addEventListener('pointerleave', leave);
+    const sync = () => {
+      enabled = !reduceMotion.matches && finePointer.matches;
+      ax = ay = undefined; // the drift animations are recreated when the media queries change
+      if (!enabled) {
+        leave();
+        h = 0;
+        place(0, 0);
+      }
+    };
+    reduceMotion.addEventListener('change', sync);
+    finePointer.addEventListener('change', sync);
+    // Hold the hero's background motion still while it's scrolled out of view
+    new IntersectionObserver(([entry]) => {
+      offscreen = !entry.isIntersecting;
+      hero.classList.toggle('is-offscreen', offscreen);
+      if (!offscreen && h > 0) run();
+    }).observe(hero);
+  }
+
+  // Scroll reveal. Lives here so the page keeps five scripts. Items below the fold are
+  // marked pending, then rise in (CSS transition) on entering the viewport. A group
+  // (data-reveal="children") reveals its contents a beat apart, flattening any data-reveal-seq child
+  // into its parts. Groups arriving together are offset a beat each, in page order.
+  if (!reduceMotion.matches && 'IntersectionObserver' in window) {
+    const parts = new Map<Element, (HTMLElement | SVGElement)[]>();
+    const reveal = new IntersectionObserver(
+      (entries) => {
+        let k = 0; // this batch's arrival order
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          reveal.unobserve(entry.target);
+          const group = parts.get(entry.target);
+          if (!group) {
+            entry.target.classList.add('is-in');
+            continue;
+          }
+          group.forEach((el, i) => {
+            el.style.setProperty('--ri', String(i + k));
+            el.classList.add('is-in');
+          });
+          k = Math.min(k + 1, 3);
+        }
+      },
+      { rootMargin: '0px 0px -6% 0px' },
+    );
+    const below = (el: Element) => el.getBoundingClientRect().top >= innerHeight; // on screen: never hide it
+    const pend = (el: HTMLElement | SVGElement) => {
+      el.style.setProperty('--ri', '0');
+      el.classList.add('reveal-pending');
+    };
+    const kids = (parent: Element) =>
+      [...parent.children].filter((c): c is HTMLElement | SVGElement => (c instanceof HTMLElement || c instanceof SVGElement) && c.tagName !== 'SCRIPT');
+    document.querySelectorAll<HTMLElement>('.section .eyebrow, .section .section-title, .section .section-intro').forEach((el) => {
+      if (!below(el)) return;
+      pend(el);
+      reveal.observe(el);
+    });
+    document.querySelectorAll<HTMLElement>('[data-reveal]').forEach((el) => {
+      if (el.dataset.reveal !== 'children') {
+        if (!below(el)) return;
+        pend(el);
+        return reveal.observe(el);
+      }
+      const flat = kids(el).flatMap((child) => (child.hasAttribute('data-reveal-seq') ? kids(child) : [child]));
+      const pending = flat.filter(below);
+      if (!pending.length) return;
+      pending.forEach(pend);
+      parts.set(el, pending);
+      reveal.observe(el);
+    });
+  }
+</script>
+
+<style>
+  /* Runs up under the transparent header, so the light and grid start at the top of the window */
+  .hero {
+    position: relative;
+    overflow: hidden;
+    margin-top: calc(-1 * var(--header-height));
+    padding-block: calc(var(--hero-pad-top) + var(--header-height)) var(--hero-pad);
+    text-align: center;
+  }
+
+  /* Light from above, so the headline sits in it: mint left of centre, cyan right.
+     Strength: --hero-light. */
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 46rem;
+    background:
+      radial-gradient(38% 52% at 36% 4%, color-mix(in srgb, var(--glow-mint) var(--hero-light), transparent), transparent 72%),
+      radial-gradient(38% 52% at 64% 8%, color-mix(in srgb, var(--glow-cyan) var(--hero-light), transparent), transparent 72%);
+    pointer-events: none;
+    transform-origin: 50% 0;
+  }
+
+  /* The light breathes, very slowly and very slightly */
+  @media (prefers-reduced-motion: no-preference) {
+    .hero::before {
+      animation: hero-breathe var(--breathe-duration) var(--ease-ambient) infinite alternate;
+    }
+  }
+
+  @keyframes hero-breathe {
+    to {
+      scale: 1.06 1.04;
+      translate: 1.5% 0;
+      opacity: 0.85;
+    }
+  }
+
+  .hero__grid {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    -webkit-mask-image: var(--grid-mask);
+    mask-image: var(--grid-mask);
+  }
+
+  /* Same mask as the base grid; 52rem tall, as nothing shows below the mask. The container lets the
+     drift use the hero's width (cqw). Fades in over --dur-enter, out over twice that. */
+  .hero__lit {
+    position: absolute;
+    inset: 0 0 auto;
+    height: 52rem;
+    pointer-events: none;
+    opacity: 0;
+    container-type: inline-size;
+    -webkit-mask-image: var(--grid-mask);
+    mask-image: var(--grid-mask);
+    transition: opacity calc(var(--dur-enter) * 2) var(--ease-ambient);
+  }
+
+  .hero.is-lit .hero__lit {
+    opacity: 1;
+    transition-duration: var(--dur-enter);
+  }
+
+  /* The spot: a fixed 2 x --spot-size window centred on its carrier's origin, with a static
+     near-Gaussian falloff. Its counter puts the lit layer back at the hero's origin, so its net
+     transform is always zero. */
+  .hero__spot,
+  .hero__spot-y,
+  .hero__counter-y,
+  .hero__counter-h {
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+
+  .hero__spot-h {
+    position: absolute;
+    left: calc(-1 * var(--spot-size));
+    top: calc(-1 * var(--spot-size));
+    width: calc(2 * var(--spot-size));
+    height: calc(2 * var(--spot-size));
+    background: var(--spot-wash);
+    -webkit-mask-image: radial-gradient(var(--spot-size) circle, #000 0%, rgb(0 0 0 / 0.78) 18%, rgb(0 0 0 / 0.45) 38%, rgb(0 0 0 / 0.18) 58%, rgb(0 0 0 / 0.05) 72%, transparent 82%);
+    mask-image: radial-gradient(var(--spot-size) circle, #000 0%, rgb(0 0 0 / 0.78) 18%, rgb(0 0 0 / 0.45) 38%, rgb(0 0 0 / 0.18) 58%, rgb(0 0 0 / 0.05) 72%, transparent 82%);
+  }
+
+  .hero__counter {
+    position: absolute;
+    left: var(--spot-size);
+    top: var(--spot-size);
+  }
+
+  .hero__lit-grid {
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: block;
+    width: 100cqw;
+    height: 52rem;
+  }
+
+  /* Idle: a two-axis drift at unrelated periods (2T and 1.3T, against the T breath), so it never
+     visibly repeats. x rides on `translate` and y on `transform`, so each axis keeps its own clock;
+     the counters run the exact inverse. Mouse only: on touch there's no hover to hand off to. */
+  @media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
+    .hero:not(.is-lit) .hero__lit {
+      opacity: 0.45;
+    }
+
+    .hero__spot,
+    .hero__counter {
+      animation: spot-x calc(var(--period) * 2) var(--ease-ambient) infinite alternate;
+    }
+
+    .hero__counter {
+      animation-name: spot-x-counter;
+    }
+
+    .hero__spot-y,
+    .hero__counter-y {
+      animation: spot-y calc(var(--period) * 1.3) var(--ease-ambient) -11s infinite alternate;
+    }
+
+    .hero__counter-y {
+      animation-name: spot-y-counter;
+    }
+  }
+
+  /* Off screen (set by the hero script), every drift layer pauses together, so the counters stay in step */
+  .hero.is-offscreen .bg-motion,
+  .hero.is-offscreen::before {
+    animation-play-state: paused;
+  }
+
+  @keyframes spot-x {
+    from { translate: calc(50cqw - min(20cqw, 200px)) 0; }
+    to { translate: calc(50cqw + min(20cqw, 200px)) 0; }
+  }
+
+  @keyframes spot-x-counter {
+    from { translate: calc(min(20cqw, 200px) - 50cqw) 0; }
+    to { translate: calc(-50cqw - min(20cqw, 200px)) 0; }
+  }
+
+  @keyframes spot-y {
+    from { transform: translateY(15rem); }
+    to { transform: translateY(28rem); }
+  }
+
+  @keyframes spot-y-counter {
+    from { transform: translateY(-15rem); }
+    to { transform: translateY(-28rem); }
+  }
+
+  .hero__inner {
+    position: relative;
+    container-type: inline-size; /* the title sizes to this width */
+  }
+
+  /* Two lines, sized to the container: 100cqi / 18.8 fits the longer one ("extension for VS
+     Code") with room to spare. Phones wrap. */
+  h1 {
+    text-wrap: balance;
+    margin: 0 auto var(--space-6);
+    font-size: min(var(--text-h1) * 0.9, max(2rem, 100cqi / 18.8));
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-tighter);
+    line-height: 1.08;
+  }
+
+  /* Phones: no set break, so the title balances freely instead of breaking at the desktop's
+     fixed point */
+  @media (max-width: 37.5rem) {
+    h1 :global(br) {
+      display: none;
+    }
+  }
+
+  .hero__body {
+    max-width: 46rem;
+    text-wrap: balance; /* so "20 minutes." never sits alone on the last line */
+    margin: 0 auto var(--space-10);
+    font-size: var(--text-lead);
+    line-height: 1.6;
+    color: var(--color-secondary); /* the hero grey ladder (tokens.css) */
+  }
+
+  /* Desktop: no cap, so "Works with" and both Azure names fit on one line */
+  @media (min-width: 64rem) {
+    .hero__body {
+      max-width: none;
+    }
+  }
+
+  .hero__ctas {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+  }
+
+  /* A pill with the monochrome YouTube mark (currentColor), not a red badge */
+  .hero__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-8);
+    padding: var(--space-1) var(--space-4);
+    border: var(--border-width) solid var(--color-line-2);
+    border-radius: var(--radius-pill);
+    background: var(--color-surface);
+    font-size: var(--text-sm);
+    color: var(--color-secondary);
+    text-decoration: none;
+  }
+
+  .hero__eyebrow--link {
+    min-height: var(--target-min);
+    transition:
+      border-color var(--dur-state) var(--ease-state),
+      color var(--dur-state) var(--ease-state);
+  }
+
+  .hero__eyebrow--link:is(:hover, :focus-visible) {
+    border-color: var(--color-line-strong);
+    color: var(--color-text);
+  }
+
+  /* The red mark (Tabler's filled brand-youtube, with a block behind its cut-out to colour
+     the play triangle) cross-fades over the outline one. It fills .yt, which the outline icon sizes
+     in rem, so both scale together on large screens. */
+  .yt {
+    position: relative;
+    display: inline-flex;
+  }
+
+  .yt :global(.icon),
+  .yt__red {
+    transition: opacity var(--dur-state) var(--ease-state);
+  }
+
+  .yt__red {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+  }
+
+  .yt__frame {
+    fill: var(--color-youtube);
+  }
+
+  .yt__play {
+    fill: var(--color-youtube-play);
+  }
+
+  .hero__eyebrow--link:is(:hover, :focus-visible) .yt__red {
+    opacity: 1;
+  }
+
+  .hero__eyebrow--link:is(:hover, :focus-visible) .yt :global(.icon) {
+    opacity: 0;
+  }
+
+  /* One-off entrance. The headline, body, and video never animate (first paint and
+     Speed Index). Nothing is hidden without it. */
+  @media (prefers-reduced-motion: no-preference) {
+    .rise {
+      animation: rise var(--dur-enter) var(--ease-out) both;
+      animation-delay: calc(var(--i, 0) * var(--stagger));
+    }
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      translate: 0 calc(var(--move-enter) / 2);
+    }
+  }
+
+  @media (max-width: 40rem) {
+    .hero {
+      padding-block: calc(var(--space-12) + var(--header-height)) var(--space-10);
+    }
+  }
+</style>

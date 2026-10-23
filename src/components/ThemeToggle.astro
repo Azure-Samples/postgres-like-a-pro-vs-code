@@ -1,0 +1,82 @@
+---
+import Icon from './Icon.astro';
+import { theme } from '../content/copy';
+// Light/dark switch; dark is the default. Base.astro applies a saved choice before first paint.
+---
+
+<button class="theme-toggle" type="button" data-theme-toggle data-to-light={theme.toLight} data-to-dark={theme.toDark} aria-label={theme.toLight}>
+  <Icon name="sun" size={19} class="theme-toggle__sun" />
+  <Icon name="moon" size={19} class="theme-toggle__moon" />
+</button>
+
+<script>
+  const root = document.documentElement;
+  const isDark = () => root.dataset.theme === 'dark';
+
+  function sync() {
+    // --color-bg in each theme, set on the meta tag by Base.astro
+    const meta = document.querySelector<HTMLMetaElement>('[data-theme-color]');
+    meta?.setAttribute('content', (isDark() ? meta.dataset.dark : meta.dataset.light) ?? '');
+    document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]').forEach((btn) => {
+      btn.setAttribute('aria-label', (isDark() ? btn.dataset.toLight : btn.dataset.toDark) ?? '');
+    });
+  }
+
+  document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]').forEach((btn) =>
+    btn.addEventListener('click', () => {
+      const next = isDark() ? 'light' : 'dark';
+      // Suspend transitions for the swap, or controls fade over their hover transitions
+      // and show light buttons on a dark page for a few frames.
+      root.classList.add('theme-switching');
+      root.dataset.theme = next;
+      requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove('theme-switching')));
+      try {
+        localStorage.setItem('theme', next);
+      } catch {}
+      sync();
+    }),
+  );
+  sync();
+</script>
+
+<style>
+  .theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--target-min);
+    height: var(--target-min);
+    border-radius: var(--radius-md);
+    border: var(--border-width) solid var(--color-line-2);
+    background: transparent;
+    color: var(--color-text);
+    cursor: pointer;
+    transition:
+      border-color var(--dur-state) var(--ease-state),
+      color var(--dur-state) var(--ease-state),
+      scale var(--dur-press) var(--ease-out);
+  }
+
+  .theme-toggle:is(:hover, :focus-visible) {
+    border-color: var(--color-line-strong);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .theme-toggle:active {
+      scale: 0.94;
+    }
+  }
+
+  /* Show the icon for the theme you'd switch to: moon in light, sun in dark. */
+  .theme-toggle :global(.theme-toggle__sun) {
+    display: none;
+  }
+
+  :global(:root[data-theme='dark']) .theme-toggle :global(.theme-toggle__moon) {
+    display: none;
+  }
+
+  :global(:root[data-theme='dark']) .theme-toggle :global(.theme-toggle__sun) {
+    display: block;
+  }
+</style>

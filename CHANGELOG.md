@@ -1,13 +1,5 @@
-## [project-title] Changelog
+## PostgreSQL Like a Pro: VS Code Edition — Changelog
 
-<a name="x.y.z"></a>
-# x.y.z (yyyy-mm-dd)
+# 1.0.1 (2026-10-21)
 
-*Features*
-* ...
-
-*Bug Fixes*
-* ...
-
-*Breaking Changes*
-* ...
+# 1.0.0 (2026-10-12)

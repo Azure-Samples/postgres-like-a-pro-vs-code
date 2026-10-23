@@ -1,0 +1,61 @@
+---
+/*
+ * A partner logo from the client's official files, one per theme. Only one is displayed
+ * (the other is display:none, so assistive tech reads one name). Never redraw a logo.
+ */
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+
+interface Props {
+  name: string;
+  light: ImageMetadata;
+  dark: ImageMetadata;
+  /** Rendered height in CSS px; width follows the file's aspect ratio. */
+  height: number;
+  /**
+   * Solid black (light theme) or white (dark theme) via a CSS filter on the official files, never
+   * a redraw. A no-op on AMD's files. Swap in Microsoft's own single-colour file if supplied.
+   */
+  mono?: boolean;
+}
+
+const { name, light, dark, height, mono = false } = Astro.props;
+const width = (img: ImageMetadata) => Math.round((img.width / img.height) * height);
+---
+
+<span class:list={['logo', mono && 'logo--mono']} style={`--logo-h: ${height / 16}rem`}>
+  <Image class="logo__img logo__img--light" src={light} alt={name} height={height} width={width(light)} densities={[1, 2]} />
+  <Image class="logo__img logo__img--dark" src={dark} alt={name} height={height} width={width(dark)} densities={[1, 2]} />
+</span>
+
+<style>
+  .logo {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .logo__img {
+    height: var(--logo-h);
+    width: auto;
+  }
+
+  .logo--mono .logo__img--light {
+    filter: brightness(0);
+  }
+
+  .logo--mono .logo__img--dark {
+    filter: brightness(0) invert(1);
+  }
+
+  .logo__img--dark {
+    display: none;
+  }
+
+  :global(:root[data-theme='dark']) .logo__img--light {
+    display: none;
+  }
+
+  :global(:root[data-theme='dark']) .logo__img--dark {
+    display: block;
+  }
+</style>

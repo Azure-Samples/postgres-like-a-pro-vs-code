@@ -1,0 +1,24 @@
+---
+// The whole page, in section order. Used by src/pages/index.astro.
+import Ambient from './Ambient.astro';
+import SiteHeader from './SiteHeader.astro';
+import Hero from './Hero.astro';
+import Capabilities from './Capabilities.astro';
+import WhyEditor from './WhyEditor.astro';
+import AgentSteps from './AgentSteps.astro';
+import KeepGoing from './KeepGoing.astro';
+import ClosingCta from './ClosingCta.astro';
+import SiteFooter from './SiteFooter.astro';
+---
+
+<SiteHeader />
+<main id="main" class="page">
+  <Ambient />
+  <Hero />
+  <Capabilities />
+  <WhyEditor />
+  <AgentSteps />
+  <KeepGoing />
+  <ClosingCta />
+</main>
+<SiteFooter />

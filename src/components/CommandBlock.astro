@@ -1,0 +1,270 @@
+---
+import Icon from './Icon.astro';
+
+interface Props {
+  lang: 'shell' | 'sql';
+  lines: string[];
+  /** Accessible name for the copy button, e.g. "Copy commands for step 1". */
+  label: string;
+  /** Accessible name for the scrollable code region, e.g. "Shell commands for step 1". */
+  region: string;
+  /** Visible label in the card's header strip, e.g. "Terminal". */
+  cardLabel: string;
+}
+
+const { lang, lines, label, region, cardLabel } = Astro.props;
+// The copy button copies exactly these lines, never the "$ " prompt.
+const payload = lines.join('\n');
+
+// Semantic colour: each line is split at build time into role-tagged tokens.
+type Role = 'cmd' | 'flag' | 'path' | 'keyword' | 'punct' | 'text';
+const SQL_KEYWORDS = new Set(['CREATE', 'EXTENSION', 'IF', 'NOT', 'EXISTS', 'SELECT', 'FROM', 'WHERE', 'TABLE', 'INSERT', 'INTO', 'VALUES']);
+const tokenize = (line: string): { role: Role; text: string }[] =>
+  line
+    .split(/(\s+|;)/)
+    .filter(Boolean)
+    .map((text, i): { role: Role; text: string } => {
+      if (/^\s+$/.test(text)) return { role: 'text', text };
+      if (text === ';') return { role: 'punct', text };
+      if (lang === 'sql') return { role: SQL_KEYWORDS.has(text) ? 'keyword' : 'text', text };
+      if (i === 0) return { role: 'cmd', text };
+      if (text.startsWith('-')) return { role: 'flag', text };
+      if (/[/.]/.test(text) || line.startsWith('cd ')) return { role: 'path', text };
+      return { role: 'text', text };
+    });
+// Phones wrap long lines: offer a break after each / and _ so a path never splits mid-word.
+const breakable = (text: string) => text.split(/(?<=[/_])/);
+---
+
+{/* data-reveal-seq: the bar and body fade in, the dark frame stays put (a dark panel fading over white goes muddy grey). */}
+<div class="cmd" data-reveal-seq>
+  <div class="cmd__bar">
+    <span class="cmd__label" aria-hidden="true">{cardLabel}</span>
+    <button class="cmd__copy" type="button" data-copy={payload} aria-label={label}>
+      <Icon name="copy" size={16} class="cmd__icon-copy" />
+      <Icon name="check" size={16} class="cmd__icon-done" />
+    </button>
+  </div>
+  <pre class="cmd__body" tabindex="0" role="region" aria-label={region}><code>{
+    lines.map((line) => (
+      <span class="cmd__line">{lang === 'shell' && <span class="cmd__prompt" aria-hidden="true">$ </span>}{tokenize(line).map(({ role, text }) =>
+        role === 'text' ? text : <span class={`cmd__${role}`}>{breakable(text).map((part, i) => <>{i > 0 && <wbr />}{part}</>)}</span>
+      )}</span>
+    ))
+  }</code></pre>
+</div>
+
+<script>
+  const status = () => document.getElementById('copy-status');
+
+  // Clipboard API first; the textarea fallback covers browsers that block it.
+  async function copy(text: string): Promise<boolean> {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      const ta = Object.assign(document.createElement('textarea'), { value: text });
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'absolute';
+      ta.style.left = '-9999px';
+      document.body.append(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      ta.remove();
+      return ok;
+    }
+  }
+
+  document.querySelectorAll<HTMLButtonElement>('.cmd__copy').forEach((btn) => {
+    let timer: number | undefined;
+    btn.addEventListener('click', async () => {
+      const ok = await copy(btn.dataset.copy ?? '');
+      const live = status();
+      window.clearTimeout(timer);
+      btn.classList.toggle('is-done', ok);
+      // Restart the one-shot "copied" flash
+      const card = btn.closest('.cmd');
+      card?.classList.remove('is-copied');
+      if (ok && card) requestAnimationFrame(() => card.classList.add('is-copied'));
+      if (live) live.textContent = ok ? 'Copied to clipboard' : "Couldn't copy. Select the text and copy it instead.";
+      timer = window.setTimeout(() => {
+        btn.classList.remove('is-done');
+        card?.classList.remove('is-copied');
+        if (live) live.textContent = '';
+      }, 1800);
+    });
+  });
+</script>
+
+<style>
+  .cmd {
+    position: relative;
+    background: var(--color-code-bg);
+    border: var(--border-width) solid var(--color-code-line);
+    border-radius: var(--radius-md);
+    box-shadow: inset 0 1px 0 var(--color-code-edge);
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .cmd__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4);
+    background: var(--color-code-bar);
+    border-bottom: var(--border-width) solid var(--color-code-line);
+  }
+
+  .cmd__label {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.04em;
+    color: var(--color-code-faint);
+  }
+
+  .cmd__body {
+    margin: 0;
+    padding: var(--space-4);
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 0.84rem;
+    line-height: 1.75;
+    color: var(--color-code-text);
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-code-line) transparent;
+  }
+
+  .cmd__body code {
+    background: none;
+    border: 0;
+    padding: 0;
+    font-size: inherit;
+    overflow-wrap: normal;
+  }
+
+  /* One block per line, so a wrapped line keeps its hanging indent */
+  .cmd__line {
+    display: block;
+  }
+
+  /* Phones: long commands wrap (a line off the edge reads as cut off); the indent marks a continuation */
+  @media (max-width: 40rem) {
+    .cmd__body,
+    .cmd__body code {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .cmd__line {
+      padding-left: 2ch;
+      text-indent: -2ch;
+    }
+  }
+
+  .cmd__prompt {
+    color: var(--color-code-faint);
+    user-select: none;
+  }
+
+  .cmd__cmd {
+    color: var(--color-code-cmd);
+  }
+
+  .cmd__flag {
+    color: var(--color-code-flag);
+  }
+
+  .cmd__path {
+    color: var(--color-code-path);
+  }
+
+  .cmd__keyword {
+    color: var(--color-code-keyword);
+  }
+
+  .cmd__punct {
+    color: var(--color-code-faint);
+  }
+
+  /* rem and no UA padding, so the button scales with its 1rem icons under root scaling (playbook §4) */
+  .cmd__copy {
+    position: relative;
+    width: 2rem; /* 32px at the base root */
+    height: 2rem;
+    padding: 0;
+    display: inline-grid;
+    place-items: center;
+    border-radius: var(--radius-sm);
+    border: var(--border-width) solid var(--color-code-line);
+    background: transparent;
+    color: var(--color-code-text);
+    cursor: pointer;
+    transition:
+      border-color var(--dur-state) var(--ease-state),
+      background-color var(--dur-state) var(--ease-state),
+      scale var(--dur-press) var(--ease-out);
+  }
+
+  /* 32px visible, 44px hit area */
+  .cmd__copy::after {
+    content: '';
+    position: absolute;
+    inset: -0.375rem;
+  }
+
+  .cmd__copy:is(:hover, :focus-visible) {
+    border-color: var(--color-code-hover-line);
+    background: var(--color-code-hover-bg);
+  }
+
+  /* The dark-theme blue, so the ring holds contrast on the dark card */
+  .cmd__copy:focus-visible {
+    outline-color: var(--color-code-focus);
+  }
+
+  /* The icons share one cell and crossfade: arriving takes --dur-state, leaving --dur-press; no overshoot */
+  .cmd__copy :global(.cmd__icon-copy),
+  .cmd__copy :global(.cmd__icon-done) {
+    grid-area: 1 / 1;
+    transition:
+      opacity var(--dur-press) var(--ease-state),
+      scale var(--dur-press) var(--ease-out);
+  }
+
+  .cmd__copy :global(.cmd__icon-done) {
+    color: var(--color-code-ok);
+    opacity: 0;
+    scale: 0.9;
+  }
+
+  .cmd__copy.is-done :global(.cmd__icon-copy) {
+    opacity: 0;
+    scale: 0.9;
+  }
+
+  .cmd__copy.is-done :global(.cmd__icon-done),
+  .cmd__copy:not(.is-done) :global(.cmd__icon-copy) {
+    opacity: 1;
+    scale: 1;
+    transition-duration: var(--dur-state);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .cmd__copy:active {
+      scale: 0.94;
+    }
+
+    .cmd.is-copied {
+      animation: cmd-flash calc(var(--dur-emph) * 2) var(--ease-state);
+    }
+  }
+
+  @keyframes cmd-flash {
+    from {
+      border-color: var(--color-code-focus);
+      box-shadow: inset 0 1px 0 var(--color-code-edge), 0 0 0 3px var(--tint-30);
+    }
+  }
+</style>

@@ -1,0 +1,12 @@
+---
+import Base from '../layouts/Base.astro';
+import LandingPage from '../components/LandingPage.astro';
+import { withBase } from '../lib/inline';
+import { heroMedia } from '../lib/media';
+---
+
+<Base>
+  {/* The video poster is the page's largest paint, and browsers don't fetch a poster early on their own. */}
+  <link slot="head" rel="preload" as="image" type="image/webp" href={withBase(heroMedia.poster)} fetchpriority="high" />
+  <LandingPage />
+</Base>

@@ -1,0 +1,75 @@
+---
+import Icon from './Icon.astro';
+import { capabilities } from '../content/copy';
+---
+
+<section class="caps" aria-labelledby="caps-heading">
+  <div class="container">
+    <h2 id="caps-heading" class="visually-hidden">{capabilities.heading}</h2>
+    <ul class="caps__grid">
+      {
+        capabilities.items.map((item) => (
+          <li class="cap card-cell" data-reveal="children">
+            <span class="icon-tile"><Icon name={item.icon} size={24} /></span>
+            <h3>{item.title}</h3>
+            <p>{item.body}</p>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>
+
+<style>
+  .caps {
+    padding-bottom: var(--space-20);
+  }
+
+  .caps__grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    background: var(--color-line);
+    border: var(--border-width) solid var(--color-line);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--edge-highlight);
+    overflow: clip;
+  }
+
+  .cap {
+    padding: var(--space-6);
+    color: var(--color-text);
+  }
+
+  h3 {
+    margin: var(--space-4) 0 var(--space-2);
+    font-size: 1.0625rem;
+    font-weight: var(--weight-semibold);
+    letter-spacing: -0.01em;
+  }
+
+  p {
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    color: var(--color-muted);
+  }
+
+  @media (max-width: 60rem) {
+    .caps__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 40rem) {
+    .caps__grid {
+      grid-template-columns: 1fr;
+    }
+
+    .caps {
+      padding-bottom: var(--space-14);
+    }
+  }
+</style>

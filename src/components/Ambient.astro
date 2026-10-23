@@ -1,0 +1,59 @@
+---
+/*
+ * Page ambient colour: one layer behind the whole page, never clipped to a section,
+ * so the glow crosses section boundaries. Mostly off the page edges, breathing very slowly.
+ * Still under reduced motion; off on phones. Placed once, inside <main>.
+ */
+---
+
+<div class="page-ambient" aria-hidden="true">
+  <span class="page-ambient__blob page-ambient__blob--a"></span>
+  <span class="page-ambient__blob page-ambient__blob--b"></span>
+  <span class="page-ambient__blob page-ambient__blob--c"></span>
+</div>
+
+<style>
+  .page-ambient {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .page-ambient__blob {
+    position: absolute;
+    width: 52vw;
+    height: 52vw;
+    max-width: 760px;
+    max-height: 760px;
+    border-radius: 50%;
+    background: var(--glow-mint); /* the middle one is cyan */
+    opacity: var(--ambient-strength);
+    filter: blur(var(--glow-blur));
+  }
+
+  /* Placed on page height, so each one straddles a section boundary */
+  .page-ambient__blob--a { top: 30%; left: -22vw; }
+  .page-ambient__blob--b { top: 52%; right: -24vw; background: var(--glow-cyan); }
+  .page-ambient__blob--c { top: 74%; left: -20vw; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .page-ambient__blob--a { animation: page-breathe var(--breathe-duration) var(--ease-ambient) infinite alternate; }
+    .page-ambient__blob--b { animation: page-breathe calc(var(--breathe-duration) * 1.4) var(--ease-ambient) calc(var(--breathe-duration) * -0.6) infinite alternate; }
+    .page-ambient__blob--c { animation: page-breathe calc(var(--breathe-duration) * 1.2) var(--ease-ambient) calc(var(--breathe-duration) * -1.1) infinite alternate; }
+  }
+
+  @keyframes page-breathe {
+    to {
+      scale: 1.12;
+      opacity: calc(var(--ambient-strength) * 1.4);
+      translate: 4% 6%;
+    }
+  }
+
+  @media (max-width: 40rem) {
+    .page-ambient {
+      display: none;
+    }
+  }
+</style>

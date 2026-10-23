@@ -1,0 +1,93 @@
+---
+import Icon from './Icon.astro';
+import type { IconName } from '../lib/icons';
+import { a11y } from '../content/copy';
+import { isResolved } from '../lib/inline';
+
+interface Props {
+  href: string;
+  variant?: 'primary' | 'secondary';
+  size?: 'md' | 'sm';
+  /** Leading icon (e.g. the GitHub mark). */
+  icon?: IconName;
+  /** Analytics/test hook. */
+  cta?: string;
+  class?: string;
+  [attr: string]: unknown;
+}
+
+const { href, variant = 'primary', size = 'md', icon, cta, class: className, ...rest } = Astro.props;
+
+// Links off the page open in a new tab; same-page anchors don't.
+const external = isResolved(href);
+const target = external ? { target: '_blank', rel: 'noopener' } : {};
+const ariaLabel = rest['aria-label'];
+if (external && typeof ariaLabel === 'string') rest['aria-label'] = `${ariaLabel} ${a11y.newTab}`;
+---
+
+<a class:list={['btn', `btn--${variant}`, size === 'sm' && 'btn--sm', className]} href={href} data-cta={cta} {...target} {...rest}>
+  {icon && <Icon name={icon} size={18} />}
+  <slot />
+  {external && <span class="visually-hidden"> {a11y.newTab}</span>}
+</a>
+
+<style>
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 3rem; /* 48px */
+    padding: var(--space-3) var(--space-6);
+    border-radius: var(--radius-md);
+    border: var(--border-width) solid transparent;
+    font-size: 1rem;
+    font-weight: var(--weight-semibold);
+    text-decoration: none;
+    white-space: nowrap;
+    transition:
+      background-color var(--dur-state) var(--ease-state),
+      border-color var(--dur-state) var(--ease-state),
+      box-shadow var(--dur-state) var(--ease-state),
+      scale var(--dur-press) var(--ease-out);
+  }
+
+  .btn--sm {
+    min-height: var(--target-min); /* 44px */
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--text-sm);
+  }
+
+  /* The only place the accent colour is used. States only get darker (white text is 4.53:1 at rest).
+     The tinted shadow adds weight without a second colour. */
+  .btn--primary {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+    box-shadow: var(--shadow-cta);
+  }
+
+  /* Hover and keyboard focus look the same. */
+  .btn--primary:is(:hover, :focus-visible) {
+    background: var(--color-accent-hover);
+    box-shadow: var(--shadow-cta-hover);
+  }
+
+  .btn--primary:active {
+    background: var(--color-accent-press);
+  }
+
+  .btn--secondary {
+    background: var(--color-raised);
+    color: var(--color-text);
+    border-color: var(--color-line-strong);
+  }
+
+  .btn--secondary:is(:hover, :focus-visible) {
+    border-color: var(--color-muted);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .btn:active {
+      scale: 0.97;
+    }
+  }
+</style>

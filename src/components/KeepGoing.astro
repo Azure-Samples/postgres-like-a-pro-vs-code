@@ -1,0 +1,133 @@
+---
+import Icon from './Icon.astro';
+import { a11y, keepGoing } from '../content/copy';
+import { isResolved } from '../lib/inline';
+---
+
+<section class="section" aria-labelledby="keep-going-heading">
+  <div class="container">
+    <h2 id="keep-going-heading" class="section-title">{keepGoing.heading}</h2>
+    <ul class="links" data-reveal="children">
+      {
+        keepGoing.items.map((item) => {
+          // A tile whose URL is still a `{{placeholder}}` shows, but isn't a link.
+          if (!isResolved(item.href)) {
+            return (
+              <li>
+                <div class="tile tile--pending">
+                  <div>
+                    <h3>{item.title}</h3>
+                    <p>{item.body}</p>
+                    <p class="tile__pending">{keepGoing.pending}</p>
+                  </div>
+                </div>
+              </li>
+            );
+          }
+          return (
+            <li>
+              <a class="tile" href={item.href} target="_blank" rel="noopener">
+                <div>
+                  <h3>{item.title}<span class="visually-hidden"> {a11y.newTab}</span></h3>
+                  <p>{item.body}</p>
+                </div>
+                <Icon name="arrow-up-right" size={20} class="tile__arrow" />
+              </a>
+            </li>
+          );
+        })
+      }
+    </ul>
+  </div>
+</section>
+
+<style>
+  .links {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: 1fr; /* every tile as tall as the tallest */
+    gap: var(--space-4);
+    margin: var(--space-10) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .tile {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-4);
+    height: 100%;
+    padding: var(--space-6);
+    background: var(--color-surface);
+    border: var(--border-width) solid var(--color-line);
+    border-radius: var(--radius-xl);
+    text-decoration: none;
+    box-shadow: var(--edge-highlight);
+    transition:
+      border-color var(--dur-state) var(--ease-state),
+      box-shadow var(--dur-state) var(--ease-state),
+      translate var(--dur-state) var(--ease-out);
+  }
+
+  /* Only real links respond; a pending tile stays still. */
+  a.tile:is(:hover, :focus-visible) {
+    border-color: var(--tint-60);
+    box-shadow: var(--edge-highlight), var(--shadow-lift);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    a.tile:is(:hover, :focus-visible) {
+      translate: 0 calc(-1 * var(--move-nudge));
+    }
+  }
+
+  a.tile:is(:hover, :focus-visible) h3 {
+    text-decoration-color: var(--color-icon-accent);
+  }
+
+  h3 {
+    margin-bottom: var(--space-1);
+    font-size: var(--text-lg);
+    font-weight: var(--weight-semibold);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+    text-decoration-color: transparent;
+    transition: text-decoration-color var(--dur-state) var(--ease-state);
+  }
+
+  p {
+    font-size: 0.9375rem;
+    color: var(--color-muted);
+  }
+
+  .tile__pending {
+    margin-top: var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--color-faint);
+  }
+
+  .tile :global(.tile__arrow) {
+    color: var(--color-muted);
+    transition:
+      translate var(--dur-state) var(--ease-out),
+      color var(--dur-state) var(--ease-state);
+  }
+
+  a.tile:is(:hover, :focus-visible) :global(.tile__arrow) {
+    color: var(--color-icon-accent);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    a.tile:is(:hover, :focus-visible) :global(.tile__arrow) {
+      translate: calc(var(--move-nudge) * 0.7) calc(var(--move-nudge) * -0.7);
+    }
+  }
+
+  @media (max-width: 40rem) {
+    .links {
+      grid-template-columns: 1fr;
+      grid-auto-rows: auto; /* one column: no empty bands */
+    }
+  }
+</style>

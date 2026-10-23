@@ -1,0 +1,132 @@
+---
+import Button from './Button.astro';
+import { closing } from '../content/copy';
+import { twoTone } from '../lib/inline';
+---
+
+<section class="closing" aria-labelledby="closing-heading">
+  <div class="container">
+    <div class="cta-card" data-reveal>
+      <div class="cta-card__blobs" aria-hidden="true"><span class="blob"></span></div>
+      {/* The hero's grid, quieter */}
+      <svg class="cta-card__grid" aria-hidden="true" focusable="false">
+        <defs>
+          <pattern id="cta-grid" x="50%" y="24" width="48" height="48" patternUnits="userSpaceOnUse">
+            <path d="M48 0H0V48" fill="none" stroke="var(--grid-line)" stroke-width="1"></path><circle cx="0" cy="0" r="1.25" fill="var(--grid-dot)"></circle><circle cx="48" cy="0" r="1.25" fill="var(--grid-dot)"></circle><circle cx="0" cy="48" r="1.25" fill="var(--grid-dot)"></circle><circle cx="48" cy="48" r="1.25" fill="var(--grid-dot)"></circle>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#cta-grid)"></rect>
+      </svg>
+      <h2 id="closing-heading" set:html={twoTone(closing.heading)} />
+      <p>{closing.body}</p>
+      <div class="cta-card__actions">
+        <Button href={closing.primary.href} cta={`${closing.primary.id}-closing`} icon="puzzle">{closing.primary.label}</Button>
+        <Button href={closing.secondary.href} variant="secondary" cta={`${closing.secondary.id}-closing`}>{closing.secondary.label}</Button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .closing {
+    padding-block: var(--space-6) var(--space-26);
+  }
+
+  .cta-card {
+    position: relative;
+    overflow: hidden;
+    padding: var(--space-20) var(--space-10);
+    background: var(--color-surface);
+    border: var(--border-width) solid var(--color-line-2);
+    border-radius: var(--radius-3xl);
+    box-shadow: var(--edge-highlight);
+    text-align: center;
+  }
+
+  .cta-card > * {
+    position: relative;
+  }
+
+  .cta-card > .cta-card__blobs {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  /* Faintest in the middle, behind the text; static */
+  .cta-card > .cta-card__grid {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    opacity: var(--cta-grid-strength);
+    -webkit-mask-image: radial-gradient(ellipse 70% 80% at 50% 50%, rgb(0 0 0 / 0.25) 30%, #000 100%);
+    mask-image: radial-gradient(ellipse 70% 80% at 50% 50%, rgb(0 0 0 / 0.25) 30%, #000 100%);
+  }
+
+  .blob {
+    position: absolute;
+    left: 20%;
+    top: 20%;
+    width: 60%;
+    height: 90%;
+    border-radius: 50%;
+    background: linear-gradient(160deg, var(--glow-mint), var(--glow-cyan) 55%, var(--glow-deep));
+    opacity: var(--cta-glow-strength);
+    filter: blur(var(--glow-blur));
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .blob {
+      /* Breathes in step with the hero light */
+      animation:
+        cta-drift var(--drift-duration) var(--ease-ambient) infinite alternate,
+        cta-breathe var(--breathe-duration) var(--ease-ambient) infinite alternate;
+    }
+  }
+
+  @keyframes cta-drift {
+    from { translate: -18% -6%; scale: 0.92; }
+    to { translate: 18% 8%; scale: 1.08; }
+  }
+
+  @keyframes cta-breathe {
+    to { opacity: calc(var(--cta-glow-strength) * 0.75); }
+  }
+
+  h2 {
+    max-width: 48rem;
+    margin: 0 auto var(--space-4);
+    font-size: clamp(1.875rem, 1.2rem + 2.8vw, 3rem);
+    font-weight: var(--weight-bold);
+    letter-spacing: -0.045em;
+    line-height: var(--leading-tight);
+  }
+
+  p {
+    margin: 0 auto var(--space-10);
+    max-width: 36rem;
+    font-size: clamp(1.0625rem, 1rem + 0.3vw, 1.1875rem);
+    line-height: 1.5;
+    color: var(--color-muted);
+    text-wrap: balance; /* no orphan */
+  }
+
+  .cta-card__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-3);
+  }
+
+  @media (max-width: 40rem) {
+    .cta-card {
+      padding: var(--space-14) var(--space-5);
+    }
+
+    .closing {
+      padding-bottom: var(--space-16);
+    }
+  }
+</style>

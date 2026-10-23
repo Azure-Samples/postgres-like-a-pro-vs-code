@@ -1,0 +1,77 @@
+---
+import Icon from './Icon.astro';
+import { why } from '../content/copy';
+import { twoTone } from '../lib/inline';
+
+// One hue per card, in page order.
+const hues = ['teal', 'blue', 'violet', 'amber'];
+---
+
+<section class="section" aria-labelledby="why-heading">
+  <div class="container">
+    <p class="eyebrow eyebrow--lg">{why.eyebrow}</p>
+    <h2 id="why-heading" class="section-title" set:html={twoTone(why.heading)} />
+    <ul class="why-grid">
+      {
+        why.items.map((item, i) => (
+          <li class="why-card card-cell" data-reveal="children" style={`--hue: var(--hue-${hues[i % hues.length]})`}>
+            <span class="icon-tile"><Icon name={item.icon} size={24} /></span>
+            <h3 class="card-title">{item.lead.replace(/\.$/, '')}</h3>
+            <p class="card-text">{item.body}</p>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>
+
+<style>
+  /* Not links, so the cards never move on hover. */
+  .why-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    margin: var(--space-12) 0 0;
+    padding: 0;
+    list-style: none;
+    border: var(--border-width) solid var(--color-line);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--edge-highlight);
+    overflow: clip;
+  }
+
+  /* Hairlines are cell borders (not a filled gap), so the page ambient shows through the cells */
+  .why-card {
+    padding: var(--space-8);
+  }
+
+  .why-card:nth-child(odd) {
+    border-right: var(--border-width) solid var(--color-line);
+  }
+
+  .why-card:nth-child(-n + 2) {
+    border-bottom: var(--border-width) solid var(--color-line);
+  }
+
+  /* Type comes from .card-title (global.css); spacing only here */
+  h3 {
+    margin: var(--space-5) 0 var(--space-2);
+  }
+
+  @media (max-width: 40rem) {
+    .why-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .why-card:nth-child(odd) {
+      border-right: 0;
+    }
+
+    .why-card:not(:last-child) {
+      border-bottom: var(--border-width) solid var(--color-line);
+    }
+
+    .why-card {
+      padding: var(--space-6);
+    }
+  }
+</style>

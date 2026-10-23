@@ -1,0 +1,62 @@
+---
+/*
+ * "Works with", set inside the hero body: one sentence naming the Azure targets in plain
+ * text (each with its official icon at 1em), then "or any other PostgreSQL database."
+ * Official icons are never redrawn or recoloured (per the icon terms). The cloud icon is only a
+ * fallback for a target without one.
+ */
+import { Image } from 'astro:assets';
+import Icon from './Icon.astro';
+import { databases } from '../content/copy';
+---
+
+<span class="works">
+  <span class="works__run">
+    {databases.lead}{' '}
+    {
+      databases.targets.map((target, i) => (
+        <>{i > 0 && ' '}<span class="chip">{target.icon ? <Image class="chip__logo" src={target.icon} alt="" width={16} height={16} /> : <Icon name="cloud" size={16} />}{target.name}</span>,</>
+      ))
+    }
+  </span>{' '}<span class="works__run">{databases.fallback}</span>
+</span>
+
+<style>
+  /* Its own line, in the body's size, leading, and grey */
+  .works {
+    display: block;
+  }
+
+  /* Tablets up: two runs, each kept whole, the second on its own line, so the break falls after
+     the chips ("Works with A, B," / "or any other PostgreSQL database."), never inside one. */
+  @media (min-width: 48rem) {
+    .works__run {
+      white-space: nowrap;
+    }
+
+    .works__run + .works__run {
+      display: block;
+    }
+  }
+
+  /* Reads as text, picked out by the icon, a brighter grey, and medium weight. The name never
+     breaks; the 1em icon sits on the baseline like a capital. */
+  .chip {
+    color: var(--color-body); /* a step up from the body's grey, a step below the title */
+    font-weight: var(--weight-medium);
+    white-space: nowrap;
+  }
+
+  .chip :global(.chip__logo),
+  .chip :global(svg) {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    margin-right: 0.3em;
+    vertical-align: -0.14em;
+  }
+
+  .chip :global(svg) {
+    color: var(--color-faint);
+  }
+</style>

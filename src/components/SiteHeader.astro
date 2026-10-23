@@ -1,0 +1,226 @@
+---
+import Button from './Button.astro';
+import Partners from './Partners.astro';
+import ThemeToggle from './ThemeToggle.astro';
+import { meta, hero } from '../content/copy';
+---
+
+<header class="site-header" data-site-header>
+  <div class="container site-header__inner">
+    {/* One title, not a breadcrumb: same colour and weight throughout. */}
+    <a class="brand" href="#top">{meta.brand}<span class="brand__suffix">{meta.brandJoiner}{meta.brandSuffix}</span></a>
+    <div class="site-header__actions">
+      <ThemeToggle />
+      {/* One spot, two occupants: the partner logos at the top, the Install CTA once the header sticks. */}
+      <div class="header-swap">
+        <div class="header-partners" data-header-partners><Partners size="header" /></div>
+        {/* Hidden from AT and tab order until the header sticks (see script). */}
+        <Button
+          href={hero.primary.href}
+          size="sm"
+          cta="install-header"
+          icon="puzzle"
+          class="header-cta"
+          data-header-cta
+          aria-label={hero.primary.label}
+          tabindex="-1"
+          aria-hidden="true"
+        >
+          <span class="header-cta__long">{hero.primary.label}</span><span class="header-cta__short">{meta.installShort}</span>
+        </Button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<script>
+  const header = document.querySelector<HTMLElement>('[data-site-header]');
+  const cta = document.querySelector<HTMLElement>('[data-header-cta]');
+  const target = document.getElementById('hero-ctas');
+
+  if (header && cta && target) {
+    const setStuck = (stuck: boolean) => {
+      header.classList.toggle('is-stuck', stuck);
+      cta.tabIndex = stuck ? 0 : -1;
+      cta.setAttribute('aria-hidden', String(!stuck));
+    };
+    // Stuck once the hero buttons' bottom edge passes under the header (their top edge is
+    // still below the header line when they stop intersecting).
+    new IntersectionObserver(
+      ([entry]) => {
+        const line = entry.rootBounds?.top ?? header.offsetHeight;
+        setStuck(!entry.isIntersecting && entry.boundingClientRect.bottom <= line);
+      },
+      { rootMargin: `-${header.offsetHeight}px 0px 0px 0px` },
+    ).observe(target);
+  }
+</script>
+
+<style>
+  /* --ink: 0 at the top of the page (title, toggle, logos recede to --color-secondary),
+     1 once the bar has its surface. */
+  @property --ink {
+    syntax: '<number>';
+    inherits: true;
+    initial-value: 0;
+  }
+
+  .site-header {
+    --ink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    border-bottom: var(--border-width) solid transparent;
+    transition:
+      background-color var(--dur-state) var(--ease-state),
+      border-color var(--dur-state) var(--ease-state),
+      --ink var(--dur-state) var(--ease-state);
+  }
+
+  .site-header.is-stuck {
+    --ink: 1;
+    background: var(--color-header);
+    -webkit-backdrop-filter: saturate(150%) blur(12px);
+    backdrop-filter: saturate(150%) blur(12px);
+    border-bottom-color: var(--color-line);
+  }
+
+  /* The surface fades in over the first 80px of scroll, so content never slides under
+     a see-through bar. Without support, or under reduced motion, .is-stuck alone sets it. */
+  @supports (animation-timeline: scroll()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .site-header:not(.is-stuck) {
+        /* Longhands: the minifier folds `animation` + `animation-timeline` into a shorthand browsers reject. */
+        animation-name: header-surface;
+        animation-timing-function: linear;
+        animation-fill-mode: both;
+        animation-timeline: scroll(root);
+        animation-range: 0 80px;
+      }
+    }
+  }
+
+  @keyframes header-surface {
+    to {
+      --ink: 1;
+      background: var(--color-header);
+      -webkit-backdrop-filter: saturate(150%) blur(12px);
+      backdrop-filter: saturate(150%) blur(12px);
+      border-bottom-color: var(--color-line);
+    }
+  }
+
+  .site-header__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    height: var(--header-height);
+  }
+
+  .brand {
+    font-weight: var(--weight-semibold);
+    color: color-mix(in srgb, var(--color-text) calc(var(--ink) * 100%), var(--color-secondary));
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .brand__suffix {
+    white-space: pre;
+  }
+
+  .site-header__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  /* No colour transition, so the icon tracks --ink frame by frame with the title */
+  .site-header :global(.theme-toggle:not(:hover, :focus-visible)) {
+    color: color-mix(in srgb, var(--color-text) calc(var(--ink) * 100%), var(--color-secondary));
+    transition-property: border-color, scale;
+  }
+
+  /* Fade matched to the title's grey (secondary ÷ text over the page). Logos only, so the
+     divider stays at full strength. */
+  .header-partners > :global(.partners .logo) {
+    opacity: calc(var(--logo-quiet) + (1 - var(--logo-quiet)) * var(--ink));
+  }
+
+  /* One slot, two occupants. The hidden one is taken out of the layout (absolute), so the
+     slot is only as wide as the visible one and the CTA sits right next to the toggle. */
+  .header-swap {
+    position: relative;
+    display: grid;
+    align-items: center;
+    justify-items: end;
+    min-height: var(--target-min);
+  }
+
+  .header-swap > :global(*) {
+    grid-area: 1 / 1;
+  }
+
+  .site-header.is-stuck .header-partners,
+  .site-header:not(.is-stuck) :global(.header-cta) {
+    position: absolute;
+    inset-block: 0;
+    right: 0;
+    height: fit-content;
+    margin-block: auto;
+  }
+
+  /* What arrives takes --dur-state, what leaves the faster --dur-press */
+  .header-partners {
+    padding-left: var(--space-4);
+    transition:
+      opacity var(--dur-state) var(--ease-state),
+      visibility var(--dur-state) var(--ease-state);
+  }
+
+  .site-header.is-stuck .header-partners {
+    opacity: 0;
+    visibility: hidden;
+    transition-duration: var(--dur-press);
+  }
+
+  /* The CTA rises in from below. The full list keeps Button's hover and press transitions,
+     which a shorter list would replace. */
+  .site-header :global(.header-cta) {
+    opacity: 0;
+    translate: 0 var(--move-nudge);
+    pointer-events: none;
+    transition:
+      opacity var(--dur-press) var(--ease-state),
+      translate var(--dur-press) var(--ease-out),
+      background-color var(--dur-state) var(--ease-state),
+      border-color var(--dur-state) var(--ease-state),
+      box-shadow var(--dur-state) var(--ease-state),
+      scale var(--dur-press) var(--ease-out);
+  }
+
+  .site-header.is-stuck :global(.header-cta) {
+    opacity: 1;
+    translate: 0 0;
+    pointer-events: auto;
+    transition-duration: var(--dur-state), var(--dur-state), var(--dur-state), var(--dur-state), var(--dur-state), var(--dur-press);
+  }
+
+  .header-cta__short {
+    display: none;
+  }
+
+  @media (max-width: 40rem) {
+    .brand__suffix,
+    .header-cta__long,
+    .header-partners {
+      display: none;
+    }
+
+    .header-cta__short {
+      display: inline;
+    }
+  }
+</style>

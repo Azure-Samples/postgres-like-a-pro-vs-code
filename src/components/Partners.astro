@@ -1,0 +1,58 @@
+---
+/*
+ * "Powered by" Microsoft | AMD lockup, in the header and the footer. Solid black (light) or
+ * white (dark), so it never competes with the primary CTA.
+ * Heights are optical: AMD's solid letterforms fill their box, while the Microsoft wordmark is
+ * shorter than its symbol, so AMD is set smaller to match.
+ */
+import LogoSlot from './LogoSlot.astro';
+import { partners } from '../content/copy';
+
+interface Props {
+  /** 'header': compact, label for screen readers only. 'footer': visible label. */
+  size: 'header' | 'footer';
+}
+
+const { size } = Astro.props;
+const heights: Record<string, number> =
+  size === 'header' ? { Microsoft: 22, AMD: 15 } : { Microsoft: 19, AMD: 13 };
+---
+
+<div class:list={['partners', `partners--${size}`]}>
+  {
+    size === 'header' ? (
+      <span class="visually-hidden">{partners.label}</span>
+    ) : (
+      <span class="partners__label">{partners.label} {partners.line}</span>
+    )
+  }
+  {
+    partners.logos.map((logo, i) => (
+      <>
+        {i > 0 && <span class="partners__divider" aria-hidden="true"></span>}
+        <LogoSlot name={logo.name} light={logo.light} dark={logo.dark} height={heights[logo.name] ?? 18} mono />
+      </>
+    ))
+  }
+</div>
+
+<style>
+  .partners {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  .partners--footer {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-3) var(--space-4);
+  }
+
+  /* Thin vertical rule between the logos */
+  .partners__divider {
+    width: var(--border-width);
+    height: var(--space-5);
+    background: var(--color-divider);
+  }
+</style>
